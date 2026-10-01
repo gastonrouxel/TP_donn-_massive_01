@@ -1,0 +1,96 @@
+# 8INF919 - TP1.
+#
+#   docker compose up --build                  generateur et consommateur
+#
+# Pour iterer sans redemarrer le procede :
+#   docker compose up -d --build generateur    une fois, en arriere-plan
+#   docker compose up consommateur             a chaque modification du code
+#   docker compose down                        arrete tout
+#
+# Suite de tests (rejeu deterministe, sans le generateur en direct) :
+#   docker compose run --rm --no-deps --build consommateur tests
+#
+# Les parametres a calibrer (debit, seed, dynamique, defauts) se reglent dans
+# le fichier .env ; les valeurs ${...:-defaut} ci-dessous ne servent que s'il
+# est absent. Les autres valeurs sont fixes.
+#
+# Sous Linux, si le depot n'est pas lisible par l'utilisateur 1000 :
+#   TP_UID=$(id -u) TP_GID=$(id -g) docker compose up --build
+name: tp1-8inf919
+
+services:
+  generateur:
+    build: ./generateur
+    image: tp1-8inf919-generateur
+    init: true
+    environment:
+      # Voir README, section 5. Apres une modification de .env, relancer le generateur.
+      # --- transport et debit
+      GEN_DEBIT: "${GEN_DEBIT:-1200}"
+      GEN_FREQUENCE_HZ: "10"
+      GEN_MACHINES: "12"
+      GEN_SEED: "${GEN_SEED:-}"
+      GEN_TAMPON_CLIENT_S: "5"
+      GEN_JOURNAL_S: "10"
+      # --- dynamique du procede (temps simule)
+      GEN_PERIODE_AMBIANTE_S: "1200"
+      GEN_DUREE_REGIME_S: "${GEN_DUREE_REGIME_S:-180}"
+      GEN_ARRET_MIN_S: "3"
+      GEN_ARRET_MAX_S: "8"
+      GEN_USURE_PAR_HEURE: "${GEN_USURE_PAR_HEURE:-0.10}"
+      GEN_TAUX_PANNE_PAR_HEURE: "${GEN_TAUX_PANNE_PAR_HEURE:-1.0}"
+      # --- defauts de donnees (0 desactive)
+      GEN_P_PERTE: "${GEN_P_PERTE:-0.002}"
+      GEN_P_DOUBLON: "${GEN_P_DOUBLON:-0.002}"
+      GEN_P_RETARD: "${GEN_P_RETARD:-0.003}"
+      GEN_RETARD_MAX_S: "5"
+      GEN_P_ABERRANT: "${GEN_P_ABERRANT:-0.001}"
+      GEN_P_CHAMP_ABSENT: "${GEN_P_CHAMP_ABSENT:-0.001}"
+      GEN_TAUX_GEL_PAR_HEURE: "${GEN_TAUX_GEL_PAR_HEURE:-2.0}"
+      GEN_TAUX_FIRMWARE_PAR_HEURE: "${GEN_TAUX_FIRMWARE_PAR_HEURE:-0.2}"
+      GEN_GIGUE_MS: "2"
+      GEN_DECALAGE_HORLOGE_MS: "0"
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 2s
+    read_only: true
+    mem_limit: 512m
+    cpus: 1
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  consommateur:
+    build: .
+    image: tp1-8inf919
+    init: true
+    command: ["app"]
+    depends_on:
+      generateur:
+        condition: service_healthy
+    volumes:
+      - ${STUDENT_DIR:-.}:/student:ro
+    user: "${TP_UID:-1000}:${TP_GID:-1000}"
+    environment:
+      FLUX_URL: "http://generateur:8000/stream"
+      TP_DUREE: "0"               # secondes ; 0 : sans fin
+      TP_RAPPORT_S: "5"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+    read_only: true
+    tmpfs:
+      - /run/tp:uid=${TP_UID:-1000},gid=${TP_GID:-1000},mode=0755,size=512m
+      - /tmp:size=64m
+    mem_limit: 2g
+    memswap_limit: 2g
+    cpus: 2
+    pids_limit: 256
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

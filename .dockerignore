@@ -1,0 +1,10 @@
+# Le contexte de construction ne doit contenir que ce que l'image copie.
+.git
+.venv
+.idea
+.vscode
+results
+solution
+**/__pycache__
+**/*.pyc
+.pytest_cache
