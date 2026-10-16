@@ -135,6 +135,15 @@ class Traitement:
                 break        
         sortie["arret"] = arret
 
+        # R6        
+        fw_majeur = int(evenement["fw"].split(".")[0])
+
+        if sortie["temperature"] is not None and fw_majeur >= FW_FAHRENHEIT_DES:
+            sortie["temperature"] = float((sortie["temperature"]-32)*5/9)
+
+        # R7
+        
+
         return sortie
 
     def resume(self):
