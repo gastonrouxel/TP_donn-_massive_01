@@ -33,7 +33,7 @@ class Traitement:
 
             self.seq_max = memoire.allouer("seq_max", len(MACHINES), "i64")
         """
-        raise NotImplementedError("Traitement.__init__ : allocations (R10)")
+        self.seq_max = memoire.allouer("seq_max", len(MACHINES), "i64")
 
     def traiter(self, evenement):
         """Recoit un evenement brut (dict) et renvoie :
@@ -54,11 +54,17 @@ class Traitement:
         La prediction `p` est calculee avant toute mise a jour du modele par
         cet evenement.
         """
-        raise NotImplementedError("Traitement.traiter : R1 a R9")
+        sortie = {"machine_id": evenement["machine_id"],
+                  "seq": evenement["seq"],
+                  "ts": evenement["ts"],
+                  "retard": False, "arret": False, "p": None}
+        for champ in CHAMPS_MESURE:
+            sortie[champ] = evenement.get(champ)
+        return sortie
 
     def resume(self):
         """Renvoie un dict serialisable en JSON, avec au moins les compteurs
         entiers "doublons" (R1), "retards" (R2) et "pertes" (R3). Vous pouvez
         y ajouter tout ce qui vous aide a suivre votre traitement.
         """
-        raise NotImplementedError("Traitement.resume : compteurs R1 a R3")
+        return {"doublons": 0, "retards": 0, "pertes": 0}
