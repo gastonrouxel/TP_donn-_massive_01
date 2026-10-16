@@ -64,6 +64,9 @@ class Traitement:
         self.curent_bloom = self.bloom1
         self.swap_sequence = 50
 
+        self.gel_val = memoire.allouer("gel_val", len(MACHINES) * len(CHAMPS_GEL), "f64")
+        self.gel_nb  = memoire.allouer("gel_nb",  len(MACHINES) * len(CHAMPS_GEL), "i64")
+
         self.seq_max = memoire.allouer("seq_max", len(MACHINES), "i64")
 
     def traiter(self, evenement):
@@ -145,6 +148,24 @@ class Traitement:
         for champ in CHAMPS_MESURE:
             if (sortie[champ] is not None and (sortie[champ] < BORNES[champ][0] or sortie[champ] > BORNES[champ][1])):
                 sortie[champ] = None
+
+        # R8
+        if not sortie["retard"]:
+            m = INDEX_MACHINE[evenement["machine_id"]]
+            for j, champ in enumerate(CHAMPS_GEL):
+                v = sortie[champ]
+                if v is None:
+                    continue
+
+                c = m * len(CHAMPS_GEL) + j
+                if self.gel_nb[c] > 0 and v == self.gel_val[c]:
+                    self.gel_nb[c] += 1
+                else:
+                    self.gel_val[c] = v
+                    self.gel_nb[c] = 1
+                    
+                if self.gel_nb[c] >= GEL_N:
+                    sortie[champ] = None
 
         return sortie
 
