@@ -93,7 +93,6 @@ class Traitement:
         if (sortie["seq"] >= self.seq_max[INDEX_MACHINE[evenement["machine_id"]]]):
             self.seq_max[INDEX_MACHINE[evenement["machine_id"]]] = sortie["seq"]
 
-
         # R1
         if (max(self.seq_max) >= self.swap_sequence):
             if self.curent_bloom == self.bloom1:
@@ -108,6 +107,11 @@ class Traitement:
             self.nb_doublons += 1
             return None
         self.curent_bloom.ajouter(cle)
+
+        # R2
+        if (sortie["seq"] < self.seq_max[INDEX_MACHINE[evenement["machine_id"]]]):
+            sortie["retard"] = True
+            self.nb_retards += 1
 
         for champ in CHAMPS_MESURE:
             sortie[champ] = evenement.get(champ)
