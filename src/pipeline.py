@@ -58,7 +58,6 @@ class Traitement:
         self.nb_doublons = 0    # doublons
         self.nb_retards = 0     # retards
         self.nb_pertes = 0      # pertes
-        self.max_sequence = 0
 
         self.bloom1 = self.Boom(memoire, "bloom1", 20000, 5)
         self.bloom2 = self.Boom(memoire, "bloom2", 20000, 5)
@@ -90,12 +89,13 @@ class Traitement:
                   "seq": evenement["seq"],
                   "ts": evenement["ts"],
                   "retard": False, "arret": False, "p": None}
-        
-        if (sortie["seq"] > self.max_sequence):
-            self.max_sequence = sortie["seq"]
+
+        if (sortie["seq"] >= self.seq_max[INDEX_MACHINE[evenement["machine_id"]]]):
+            self.seq_max[INDEX_MACHINE[evenement["machine_id"]]] = sortie["seq"]
+
 
         # R1
-        if (self.max_sequence >= self.swap_sequence):
+        if (max(self.seq_max) >= self.swap_sequence):
             if self.curent_bloom == self.bloom1:
                 self.curent_bloom = self.bloom2
             else:
@@ -105,6 +105,7 @@ class Traitement:
 
         cle = f"{evenement['machine_id']}:{evenement['seq']}"
         if self.bloom1.peut_contenir(cle) or self.bloom2.peut_contenir(cle):
+            self.nb_doublons += 1
             return None
         self.curent_bloom.ajouter(cle)
 
