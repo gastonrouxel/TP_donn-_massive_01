@@ -59,8 +59,8 @@ class Traitement:
         self.nb_retards = 0     # retards
         self.nb_pertes = 0      # pertes
 
-        self.bloom1 = self.Boom(memoire, "bloom1", 20000, 5)
-        self.bloom2 = self.Boom(memoire, "bloom2", 20000, 5)
+        self.bloom1 = self.Boom(memoire, "bloom1", 30000, 6)
+        self.bloom2 = self.Boom(memoire, "bloom2", 30000, 6)
         self.curent_bloom = self.bloom1
         self.swap_sequence = 50
 
@@ -90,7 +90,9 @@ class Traitement:
                   "ts": evenement["ts"],
                   "retard": False, "arret": False, "p": None}
 
-        if (sortie["seq"] >= self.seq_max[INDEX_MACHINE[evenement["machine_id"]]]):
+        if (sortie["seq"] > self.seq_max[INDEX_MACHINE[evenement["machine_id"]]]):
+            # R3
+            self.nb_pertes += sortie["seq"] - self.seq_max[INDEX_MACHINE[evenement["machine_id"]]] - 1
             self.seq_max[INDEX_MACHINE[evenement["machine_id"]]] = sortie["seq"]
 
         # R1
@@ -112,6 +114,8 @@ class Traitement:
         if (sortie["seq"] < self.seq_max[INDEX_MACHINE[evenement["machine_id"]]]):
             sortie["retard"] = True
             self.nb_retards += 1
+            # R3
+            self.nb_pertes -= 1
 
         for champ in CHAMPS_MESURE:
             sortie[champ] = evenement.get(champ)
@@ -122,4 +126,6 @@ class Traitement:
         entiers "doublons" (R1), "retards" (R2) et "pertes" (R3). Vous pouvez
         y ajouter tout ce qui vous aide a suivre votre traitement.
         """
-        return {"doublons": self.nb_doublons, "retards": self.nb_retards, "pertes": self.nb_pertes}
+        return {"doublons": int(self.nb_doublons),
+                "retards": int(self.nb_retards),
+                "pertes": int(self.nb_pertes)}
