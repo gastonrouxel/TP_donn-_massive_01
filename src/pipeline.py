@@ -21,9 +21,31 @@ indifferent pour autant.
 from src.annexe import (BORNES, CHAMPS_GEL, CHAMPS_MESURE, FREQUENCE_HZ,
                         FW_FAHRENHEIT_DES, GEL_N, HORIZON_S, INDEX_MACHINE,
                         MACHINES, RETARD_MAX_S)
+from hashlib import blake2b
 
 
 class Traitement:
+
+    class Boom:
+        def __init__(self, memoire, nom, m, k):
+            self.m = m
+            self.k = k
+            self.bits = memoire.allouer(nom, m, "bit")
+
+        def h(self, cle, i):
+            d = blake2b(cle.encode(), digest_size=8, key=bytes([i])).digest()
+            return int.from_bytes(d, "big") % self.m
+    
+        def ajouter(self, cle):
+            for i in range(self.k):
+                self.bits[self.h(cle, i)] = True
+
+        def peut_contenir(self, cle):
+            return all(self.bits[self.h(cle, i)] for i in range(self.k))
+
+        def reinitialiser(self):
+            for i in range(len(self.bits)):
+                self.bits[i] = False
 
     def __init__(self, memoire):
         """R10. Alloue dans `memoire` tout l'etat qui depend du flux.
@@ -33,6 +55,16 @@ class Traitement:
 
             self.seq_max = memoire.allouer("seq_max", len(MACHINES), "i64")
         """
+        self.nb_doublons = 0    # doublons
+        self.nb_retards = 0     # retards
+        self.nb_pertes = 0      # pertes
+        self.max_sequence = 0
+
+        self.bloom1 = self.Boom(memoire, "bloom1", 20000, 5)
+        self.bloom2 = self.Boom(memoire, "bloom2", 20000, 5)
+        self.curent_bloom = self.bloom1
+        self.swap_sequence = 50
+
         self.seq_max = memoire.allouer("seq_max", len(MACHINES), "i64")
 
     def traiter(self, evenement):
@@ -58,6 +90,24 @@ class Traitement:
                   "seq": evenement["seq"],
                   "ts": evenement["ts"],
                   "retard": False, "arret": False, "p": None}
+        
+        if (sortie["seq"] > self.max_sequence):
+            self.max_sequence = sortie["seq"]
+
+        # R1
+        if (self.max_sequence >= self.swap_sequence):
+            if self.curent_bloom == self.bloom1:
+                self.curent_bloom = self.bloom2
+            else:
+                self.curent_bloom = self.bloom1
+            self.curent_bloom.reinitialiser()
+            self.swap_sequence += 50
+
+        cle = f"{evenement['machine_id']}:{evenement['seq']}"
+        if self.bloom1.peut_contenir(cle) or self.bloom2.peut_contenir(cle):
+            return None
+        self.curent_bloom.ajouter(cle)
+
         for champ in CHAMPS_MESURE:
             sortie[champ] = evenement.get(champ)
         return sortie
@@ -67,4 +117,4 @@ class Traitement:
         entiers "doublons" (R1), "retards" (R2) et "pertes" (R3). Vous pouvez
         y ajouter tout ce qui vous aide a suivre votre traitement.
         """
-        return {"doublons": 0, "retards": 0, "pertes": 0}
+        return {"doublons": self.nb_doublons, "retards": self.nb_retards, "pertes": self.nb_pertes}
