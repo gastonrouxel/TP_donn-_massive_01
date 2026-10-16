@@ -142,7 +142,9 @@ class Traitement:
             sortie["temperature"] = float((sortie["temperature"]-32)*5/9)
 
         # R7
-        
+        for champ in CHAMPS_MESURE:
+            if (sortie[champ] is not None and (sortie[champ] < BORNES[champ][0] or sortie[champ] > BORNES[champ][1])):
+                sortie[champ] = None
 
         return sortie
 
