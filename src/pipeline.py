@@ -85,10 +85,16 @@ class Traitement:
         La prediction `p` est calculee avant toute mise a jour du modele par
         cet evenement.
         """
-        sortie = {"machine_id": evenement["machine_id"],
-                  "seq": evenement["seq"],
-                  "ts": evenement["ts"],
-                  "retard": False, "arret": False, "p": None}
+        sortie = {
+                "machine_id": evenement["machine_id"],
+                "seq": evenement["seq"],
+                "ts": evenement["ts"],
+
+                "retard": False, 
+                "arret": False,
+
+                "p": 0.0
+            }
 
         if (sortie["seq"] > self.seq_max[INDEX_MACHINE[evenement["machine_id"]]]):
             # R3
@@ -117,6 +123,7 @@ class Traitement:
             # R3
             self.nb_pertes -= 1
 
+        # R4
         for champ in CHAMPS_MESURE:
             sortie[champ] = evenement.get(champ)
         return sortie
