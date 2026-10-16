@@ -126,6 +126,15 @@ class Traitement:
         # R4
         for champ in CHAMPS_MESURE:
             sortie[champ] = evenement.get(champ)
+
+        # R5
+        arret = True
+        for champ in CHAMPS_MESURE:
+            if sortie[champ] is not None:
+                arret = False
+                break        
+        sortie["arret"] = arret
+
         return sortie
 
     def resume(self):
